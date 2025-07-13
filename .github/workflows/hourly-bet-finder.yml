@@ -2,8 +2,8 @@ name: Hourly Bet Finder
 
 on:
   schedule:
-    - cron: "0 * * * *"     # Runs once per hour
-  workflow_dispatch:         # Allows manual trigger
+    - cron: "0 * * * *"  # Runs every hour at minute 0
+  workflow_dispatch:     # Also allows manual runs
 
 permissions:
   contents: write            # Needed to push commits
@@ -13,25 +13,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout code (master branch)
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0       # Required for full branch switching
+        fetch-depth: 0
+        ref: master
 
-    - name: Set up Python
+    - name: Fetch data branch CSV files
+      run: |
+        git fetch origin data:data
+        git checkout data -- '*.csv'
+
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: 3.11
 
-    - name: Install Python dependencies
+    - name: Install dependencies
       run: |
         pip install pandas numpy python-dateutil pytz requests
-
-    - name: Switch to data branch and pull latest
-      run: |
-        git fetch origin data
-        git checkout data || git checkout -b data origin/data
-        git pull origin data
 
     - name: Run the bet finder script
       run: |
