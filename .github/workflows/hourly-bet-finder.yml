@@ -43,4 +43,5 @@ jobs:
         git config user.email "github-actions@github.com"
         git add '*.csv'
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
+        git pull --rebase origin data || echo "No remote changes to pull"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
