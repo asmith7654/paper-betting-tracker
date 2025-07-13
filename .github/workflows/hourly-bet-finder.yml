@@ -2,42 +2,45 @@ name: Hourly Bet Finder
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Runs every hour at minute 0
-  workflow_dispatch:     # Also allows manual runs
+    - cron: "0 * * * *"     # Runs once per hour
+  workflow_dispatch:         # Allows manual trigger
+
+permissions:
+  contents: write            # Needed to push commits
 
 jobs:
   run-bet-finder:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code (master branch)
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
-        ref: master
+        fetch-depth: 0       # Required for full branch switching
 
-    - name: Fetch data branch CSV files
-      run: |
-        git fetch origin data:data
-        git checkout data -- '*.csv'
-
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: 3.11
 
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         pip install pandas numpy python-dateutil pytz requests
+
+    - name: Switch to data branch and pull latest
+      run: |
+        git fetch origin data
+        git checkout data || git checkout -b data origin/data
+        git pull origin data
 
     - name: Run the bet finder script
       run: |
         python find_bets.py
 
-    - name: Commit and push updated CSV files to data branch
+    - name: Commit and push updated CSVs to data branch
       run: |
         git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config user.email "github-actions@github.com"
         git add '*.csv'
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
-        git push origin HEAD:data
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
