@@ -41,6 +41,12 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions@github.com"
+
         git add avg_edge.csv master_avg_bets.csv master_avg_full.csv master_pin_bets.csv master_pin_full.csv master_zscore_bets.csv master_zscore_full.csv outliers.csv pin_edge.csv vig.csv
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
+
+        # Pull remote changes and rebase local changes on top to avoid conflicts
+        git fetch origin data
+        git rebase origin/data || { echo "Rebase failed"; git rebase --abort; exit 1; }
+
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
