@@ -39,26 +39,35 @@ jobs:
 
     - name: Commit and push updated CSVs to data branch
       run: |
-        git config user.name "github-actions[bot]"
+        # --- Git identity
+        git config user.name  "github-actions[bot]"
         git config user.email "github-actions@github.com"
 
-        # Stash all files including untracked ones
-        git stash push --include-untracked
+        # --- Stage only the new/changed CSVs on master
+        CSV_LIST="avg_edge.csv master_avg_bets.csv master_avg_full.csv \
+                  master_pin_bets.csv master_pin_full.csv \
+                  master_zscore_bets.csv master_zscore_full.csv \
+                  outliers.csv pin_edge.csv vig.csv"
 
-        # Switch to data branch
-        git fetch origin data:data
+        git add $CSV_LIST
+        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
+          || echo "Nothing to commit on master"
+
+        # --- Move to data branch
+        git fetch origin data:data          # make sure it's up‑to‑date
         git checkout data
 
-        # Apply only the CSVs
-        git stash pop || echo "No stash to pop"
+        # --- Remove OLD versions of the CSVs to avoid add/add conflicts
+        git rm -f --ignore-unmatch $CSV_LIST
+        git commit -m "Remove old CSV placeholders" || true
 
-        # Resolve conflicts by keeping our version
-        for file in avg_edge.csv master_avg_bets.csv master_avg_full.csv master_pin_bets.csv master_pin_full.csv master_zscore_bets.csv master_zscore_full.csv outliers.csv pin_edge.csv vig.csv
-        do
-          git checkout --ours -- "$file"
-          git add "$file"
-        done
+        # --- Copy fresh CSVs from master (they’re in the stash index)
+        git checkout master -- $CSV_LIST
 
-        # Commit and push
-        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
+        # --- Commit fresh CSVs
+        git add $CSV_LIST
+        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
+          || echo "No CSV changes to commit on data"
+
+        # --- Push to data branch using the Actions token
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
