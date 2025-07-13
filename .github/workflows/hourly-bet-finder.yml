@@ -42,18 +42,23 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions@github.com"
 
-        # Stash everything so only CSVs are committed
+        # Stash all files including untracked ones
         git stash push --include-untracked
 
-        # Checkout data branch
+        # Switch to data branch
         git fetch origin data:data
         git checkout data
 
-        # Apply only the CSVs from stash
-        git stash pop
+        # Apply only the CSVs
+        git stash pop || echo "No stash to pop"
 
-        # Stage only the CSV files
-        git add avg_edge.csv master_avg_bets.csv master_avg_full.csv master_pin_bets.csv master_pin_full.csv master_zscore_bets.csv master_zscore_full.csv outliers.csv pin_edge.csv vig.csv
+        # Resolve conflicts by keeping our version
+        for file in avg_edge.csv master_avg_bets.csv master_avg_full.csv master_pin_bets.csv master_pin_full.csv master_zscore_bets.csv master_zscore_full.csv outliers.csv pin_edge.csv vig.csv
+        do
+          git checkout --ours -- "$file"
+          git add "$file"
+        done
 
+        # Commit and push
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
