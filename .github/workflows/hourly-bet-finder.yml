@@ -2,11 +2,11 @@ name: Hourly Bet Finder
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Runs every hour at minute 0
-  workflow_dispatch:     # Also allows manual runs
+    - cron: "*/15 * * * *"  # Runs every 15 minutes
+  workflow_dispatch:
 
 permissions:
-  contents: write            # Needed to push commits
+  contents: write
 
 jobs:
   run-bet-finder:
@@ -38,36 +38,34 @@ jobs:
         python find_bets.py
 
     - name: Commit and push updated CSVs to data branch
+      shell: bash
       run: |
-        # --- Git identity
         git config user.name  "github-actions[bot]"
         git config user.email "github-actions@github.com"
 
-        # --- Stage only the new/changed CSVs on master
-        CSV_LIST="avg_edge.csv master_avg_bets.csv master_avg_full.csv \
-                  master_pin_bets.csv master_pin_full.csv \
-                  master_zscore_bets.csv master_zscore_full.csv \
-                  outliers.csv pin_edge.csv vig.csv"
+        CSV_LIST="
+          master_avg_bets.csv
+          master_avg_full.csv
+          master_pin_bets.csv
+          master_pin_full.csv
+          master_zscore_bets.csv
+          master_zscore_full.csv
+        "
 
         git add $CSV_LIST
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
           || echo "Nothing to commit on master"
 
-        # --- Move to data branch
-        git fetch origin data:data          # make sure it's up‑to‑date
+        git fetch origin data:data
         git checkout data
 
-        # --- Remove OLD versions of the CSVs to avoid add/add conflicts
         git rm -f --ignore-unmatch $CSV_LIST
         git commit -m "Remove old CSV placeholders" || true
 
-        # --- Copy fresh CSVs from master (they’re in the stash index)
         git checkout master -- $CSV_LIST
 
-        # --- Commit fresh CSVs
         git add $CSV_LIST
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
           || echo "No CSV changes to commit on data"
 
-        # --- Push to data branch using the Actions token
         git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
