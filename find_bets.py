@@ -500,7 +500,7 @@ if __name__ == "__main__":
 
     # 2. Compute vig‑free
     vf_df = add_vig_free_implied_probs(organized)
-    vf_df.to_csv("vig.csv",index=False)
+    #vf_df.to_csv("vig.csv",index=False)
 
     # 3‑A Average edge -------------------------------------------------------
     avg_df      = add_avg_edge_info(vf_df, edge_threshold=0.05)
