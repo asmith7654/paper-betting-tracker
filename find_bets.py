@@ -27,6 +27,7 @@ def prettify_headers(df: pd.DataFrame) -> pd.DataFrame:
     mapping = {c: c.replace("_", " ").title() for c in df.columns}
     return df.rename(columns=mapping)
 
+
 def clean_odds(df: pd.DataFrame) -> pd.DataFrame:
     """
     Replace any odds equal to 1.0 with NaN.
@@ -51,7 +52,9 @@ def min_bookmakers_mask(row: pd.Series, min_bm: int = 5) -> bool:
     return count >= min_bm
 
 
-def _append_unique(df_to_append: pd.DataFrame, csv_path: str, key_cols: list[str]) -> None:
+def _append_unique(df_to_append: pd.DataFrame,
+                   csv_path: str,
+                   key_cols: list[str]) -> None:
     """
     Append rows to csv_path unless a row with the same key_cols tuple already
     exists. Adds a `Scrape Time` column automatically. 
@@ -64,24 +67,71 @@ def _append_unique(df_to_append: pd.DataFrame, csv_path: str, key_cols: list[str
     """
     df_to_append = df_to_append.copy()
     df_to_append["Scrape Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     df_to_append = prettify_headers(df_to_append)
 
+    # --- If no CSV yet, just write it -------------------------------------
     if not os.path.exists(csv_path):
         df_to_append.to_csv(csv_path, index=False)
         print(f"Created {csv_path} ({len(df_to_append)} rows)")
         return
 
+    # --- Load existing, align schemas -------------------------------------
     existing = pd.read_csv(csv_path)
-    existing_keys = set(map(tuple, existing[key_cols].values.tolist()))
-    new_rows = df_to_append[~df_to_append[key_cols].apply(tuple, axis=1).isin(existing_keys)]
+
+    # Union of columns (keeps order: old cols first, then any new ones)
+    all_cols = list(existing.columns)
+    for c in df_to_append.columns:
+        if c not in all_cols:
+            all_cols.append(c)
+
+    # Add missing cols with NaN
+    for c in all_cols:
+        if c not in existing.columns:
+            existing[c] = np.nan
+        if c not in df_to_append.columns:
+            df_to_append[c] = np.nan
+
+    # Re‑order both DataFrames
+    existing   = existing[all_cols]
+    df_to_append = df_to_append[all_cols]
+
+    # --- Deduplicate on key_cols ------------------------------------------
+    # ----- build a set of existing keys (match, team, DATE) ------------------
+    existing_keys = {
+        (row["Match"], row["Team"], start_date(row["Start Time"]))
+        for _, row in existing.iterrows()
+    }
+
+    # ----- find rows whose (match, team, DATE) combo is new ------------------
+    new_rows_mask = df_to_append.apply(
+        lambda r: (r["Match"], r["Team"], start_date(r["Start Time"])) not in existing_keys,
+        axis=1,
+    )
+    new_rows = df_to_append[new_rows_mask]
+
 
     if new_rows.empty:
         print(f"No new rows for {csv_path}")
         return
 
-    new_rows.to_csv(csv_path, mode="a", header=False, index=False)
-    print(f"Appended {len(new_rows)} rows to {csv_path}")
+    # --- Concatenate & rewrite entire CSV ---------------------------------
+    combined = pd.concat([existing, new_rows], ignore_index=True)
+    combined.to_csv(csv_path, index=False)
+    print(f"Appended {len(new_rows)} rows to {csv_path} (file rewritten)")
+
+
+def start_date(ts) -> str:
+    """
+    Convert a timestamp / datetime-like / ISO string to 'YYYY-MM-DD'.
+
+    Examples
+    --------
+    >>> start_date("2025-07-13 04:00:44")
+    '2025-07-13'
+    >>> start_date(pd.Timestamp("2025-07-13 04:00:00"))
+    '2025-07-13'
+    """
+    return pd.to_datetime(ts).strftime("%Y-%m-%d")
 
 
 # ----------------------------- Logging profitable bets into master .csv files ----------------------------- #
