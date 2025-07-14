@@ -41,7 +41,7 @@ sweden_hockey = "icehockey_sweden_hockey_league"
 mexico = "soccer_mexico_ligamx"
 ireland = "soccer_league_of_ireland"
 
-API_KEY = "bd61470183edaddac927f82180a28fa1"
+API_KEY = "7ca177e18aa6a5230dddc27a238e3f73"
 SPORT = upcoming
 REGIONS = "us,uk,eu,au"
 MARKETS = "h2h"
@@ -65,6 +65,8 @@ def fetch_odds() -> pd.DataFrame:
     }
 
     response = requests.get(url, params=params)
+    print("Requests Remaining:", response.headers.get("x-requests-remaining"))
+    print("Requests Used:", response.headers.get("x-requests-used"))
 
     if response.status_code != 200:
         print(f"⚠️ Failed to fetch odds: {response.status_code} - {response.text}")

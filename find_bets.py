@@ -62,7 +62,7 @@ def _append_unique(df_to_append: pd.DataFrame,
     Args:
         df_to_append (pd.Dataframe): Dataframe with the new bets to be added.
         csv_path (str): Path leading to the master data set of minimal bet information.
-        key_cols (list[str]): Columns that uniquely identify a possible bet. For example, "Match", "Team",
+        key_cols (list[str]): Columns that uniquely identify a possible bet. For example, "Match"
             and "Start Time".
     """
     df_to_append = df_to_append.copy()
@@ -96,15 +96,15 @@ def _append_unique(df_to_append: pd.DataFrame,
     df_to_append = df_to_append[all_cols]
 
     # --- Deduplicate on key_cols ------------------------------------------
-    # ----- build a set of existing keys (match, team, DATE) ------------------
+    # ----- build a set of existing keys (match, date) ------------------
     existing_keys = {
-        (row["Match"], row["Team"], start_date(row["Start Time"]))
+        (row["Match"], start_date(row["Start Time"]))
         for _, row in existing.iterrows()
     }
 
     # ----- find rows whose (match, team, DATE) combo is new ------------------
     new_rows_mask = df_to_append.apply(
-        lambda r: (r["Match"], r["Team"], start_date(r["Start Time"])) not in existing_keys,
+        lambda r: (r["Match"], start_date(r["Start Time"])) not in existing_keys,
         axis=1,
     )
     new_rows = df_to_append[new_rows_mask]
@@ -161,7 +161,7 @@ def log_unique_bets(summary_df: pd.DataFrame, csv_path: str) -> None:
         summary_df.sort_values(score_col, ascending=False)
                   .drop_duplicates(subset=conflict_key, keep="first")
     )
-    _append_unique(best_side, csv_path, ["Match", "Team", "Start Time"])
+    _append_unique(best_side, csv_path, ["Match", "Start Time"])
 
 
 def log_full_rows(source_df: pd.DataFrame,
@@ -180,7 +180,7 @@ def log_full_rows(source_df: pd.DataFrame,
         print("No summaries to copy to full log.")
         return
 
-    key = ["Match", "Team", "Start Time"]
+    key = ["Match", "Team", "Start Time"]   # <- add Team back
     merged = pd.merge(summary_df[key], source_df, on=key, how="left")
 
     # Drop columns we do not want carrying over
@@ -216,7 +216,7 @@ def log_full_rows(source_df: pd.DataFrame,
     keep_cols = [c for c in merged.columns
                  if not c.startswith(drop_prefixes) and c not in drop_exact]
 
-    _append_unique(merged[keep_cols], full_csv_path, key)
+    _append_unique(merged[keep_cols], full_csv_path, ["Match", "Start Time"])
 
 
 # ----------------------------------- Vig‑free implied probabilities ----------------------------------- #
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     # 3‑A Average edge -------------------------------------------------------
     avg_df      = add_avg_edge_info(vf_df, edge_threshold=0.05)
     avg_summary = summarize_avg(avg_df)
-    avg_summary.to_csv("avg_edge.csv", index=False)
+    #avg_summary.to_csv("avg_edge.csv", index=False)
 
     if not avg_summary.empty:
         log_unique_bets(avg_summary, "master_avg_bets.csv")
@@ -514,7 +514,7 @@ if __name__ == "__main__":
     # 3‑B Z‑scores -----------------------------------------------------------
     z_df        = add_largest_outlier_info(vf_df, z_thresh=2)
     z_summary   = summarize_outliers(z_df)
-    z_summary.to_csv("outliers.csv", index=False)
+    #z_summary.to_csv("outliers.csv", index=False)
 
     if not z_summary.empty:
         log_unique_bets(z_summary, "master_zscore_bets.csv")
@@ -523,7 +523,7 @@ if __name__ == "__main__":
     # 3‑C Pinnacle edge ------------------------------------------------------
     pin_df      = add_pinnacle_edge_info(vf_df, edge_threshold=0.05)
     pin_summary = summarize_pinnacle_edge(pin_df)
-    pin_summary.to_csv("pin_edge.csv", index=False)
+    #pin_summary.to_csv("pin_edge.csv", index=False)
 
     if not pin_summary.empty:
         log_unique_bets(pin_summary, "master_pin_bets.csv")
