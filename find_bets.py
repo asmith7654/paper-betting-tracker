@@ -182,7 +182,7 @@ def log_unique_bets(summary_df: pd.DataFrame, csv_path: str) -> None:
 
     conflict_key = ["Match", "Start Time"]
     # infer score column name
-    for candidate in ("Avg Edge Pct", "Z Score", "Edge Vs Pinnacle Pct"):
+    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Edge Vs Pinnacle Pct"):
         if candidate in summary_df.columns:
             score_col = candidate
             break
@@ -218,7 +218,7 @@ def log_full_rows(source_df: pd.DataFrame,
     # Drop columns we do not want carrying over
     drop_prefixes = ("Vigfree ",)
     score_col = None
-    for candidate in ("Avg Edge Pct", "Z Score", "Edge Vs Pinnacle Pct"):
+    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Edge Vs Pinnacle Pct"):
         if candidate in summary_df.columns:
             score_col = candidate
             break
