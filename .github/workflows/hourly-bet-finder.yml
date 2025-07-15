@@ -47,8 +47,8 @@ jobs:
     - name: Run bet‑finder script
       run: python find_bets.py
 
-    # ─────────────────────── 5. Commit & push CSVs to data branch ────────────────────
-    - name: Commit and push updated CSVs
+    # ───────────────── 5. Commit & push CSVs to data branch ─────────────────
+    - name: Commit and push updated CSVs to data
       shell: bash
       env:
         CSV_LIST: |
@@ -62,25 +62,21 @@ jobs:
           master_mod_zscore_full.csv
       run: |
         set -e
-
         git config user.name  "github-actions[bot]"
         git config user.email "github-actions@github.com"
 
-        for f in $CSV_LIST ; do
-          if [[ -f "$f" ]]; then
-            git add "$f"
-            echo " Staged $f"
-          fi
+        for f in $CSV_LIST; do
+          [ -f "$f" ] && git add "$f" && echo " Staged $f"
         done
 
-        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || {
-          echo "Nothing to commit – skipping push";
-          exit 0;
-        }
+        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
+          || { echo "Nothing to commit – skipping push"; exit 0; }
 
-        # Pull any latest changes on data branch to avoid non-fast-forward error
+        # Re‑base onto the latest data branch tip so the push is fast‑forward
         git fetch origin data
-        git rebase origin/data || echo "⚠️  Rebase failed – continuing anyway"
+        git rebase origin/data
 
-        # Push the updated files to data branch
-        git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:data
+        # Push *this commit* to data (force-with-lease protects against races)
+        git push --force-with-lease \
+          https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} \
+          HEAD:data
