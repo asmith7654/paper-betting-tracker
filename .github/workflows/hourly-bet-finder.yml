@@ -1,71 +1,82 @@
-name: Hourly Bet Finder
+name: Bet Finder (15‑min)
 
 on:
   schedule:
-    - cron: "2,8,14,21,28,35,42,49,56 * * * *"
-  workflow_dispatch:
+    # minute 02, 08, 14, 21, 28, 35, 42, 49, 56 of every hour
+    - cron: '2,8,14,21,28,35,42,49,56 * * * *'
+  workflow_dispatch:       # manual run button
 
 permissions:
-  contents: write
+  contents: write          # allow the Action to push commits
 
 jobs:
   run-bet-finder:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code (master branch)
+    # ──────────────────────────────── 1. Code checkout ────────────────────────────────
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
-        ref: master
+        fetch-depth: 0      # need full history so we can push to another branch
 
-    - name: Fetch data branch CSV files
+    # ─────────────────── 2. Pull any existing CSVs from the data branch ───────────────
+    - name: Pull existing CSVs from data branch (if any)
+      shell: bash
       run: |
-        git fetch origin data:data
-        git checkout data -- '*.csv'
+        set -e
+        git fetch origin data || true              # fetch the branch if it exists
+        if git show-ref --quiet refs/remotes/origin/data ; then
+          # Try to check out *.csv files; ignore error if the branch is empty
+          git checkout origin/data -- '*.csv' || true
+          echo "✅  Pulled CSVs from data branch"
+        else
+          echo "ℹ️  'data' branch does not exist yet – starting fresh"
+        fi
 
+    # ───────────────────────────── 3. Python environment ─────────────────────────────
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: 3.11
+        python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        pip install pandas numpy python-dateutil pytz requests
+    - name: Install Python dependencies
+      run: pip install pandas numpy python-dateutil pytz requests
 
-    - name: Run the bet finder script
-      run: |
-        python find_bets.py
+    # ───────────────────────────── 4. Run your pipeline ──────────────────────────────
+    - name: Run bet‑finder script
+      run: python find_bets.py
 
-    - name: Commit and push updated CSVs to data branch
+    # ─────────────────────── 5. Commit & push CSVs to data branch ────────────────────
+    - name: Commit and push updated CSVs
       shell: bash
-      run: |
-        git config user.name  "github-actions[bot]"
-        git config user.email "github-actions@github.com"
-
-        CSV_LIST="
+      env:
+        CSV_LIST: |
           master_avg_bets.csv
           master_avg_full.csv
           master_pin_bets.csv
           master_pin_full.csv
           master_zscore_bets.csv
           master_zscore_full.csv
-        "
+          master_mod_zscore_bets.csv
+          master_mod_zscore_full.csv
+      run: |
+        set -e
 
-        git add $CSV_LIST
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions@github.com"
+
+        # Stage only CSVs that actually exist
+        for f in $CSV_LIST ; do
+          if [[ -f "$f" ]]; then
+            git add "$f"
+            echo " Staged $f"
+          fi
+        done
+
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
-          || echo "Nothing to commit on master"
+          || { echo "Nothing to commit – skipping push"; exit 0; }
 
-        git fetch origin data:data
-        git checkout data
-
-        git rm -f --ignore-unmatch $CSV_LIST
-        git commit -m "Remove old CSV placeholders" || true
-
-        git checkout master -- $CSV_LIST
-
-        git add $CSV_LIST
-        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
-          || echo "No CSV changes to commit on data"
-
-        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
+        # Push current HEAD (on master) to the remote **data** branch
+        # Creates the branch on first run if it isn’t there yet
+        git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:data
