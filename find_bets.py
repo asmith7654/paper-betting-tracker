@@ -39,18 +39,6 @@ def clean_odds(df: pd.DataFrame) -> pd.DataFrame:
     df[numeric_cols] = df[numeric_cols].where(df[numeric_cols] != 1, np.nan)
     return df
 
-
-def min_bookmakers_mask(row: pd.Series, min_bm: int = 5) -> bool:
-    """
-    Return True if row has at least min_bm non‑na numeric bookmaker odds.
-    
-    Args:
-        row (pd.Series): A row of odds for an outcome.
-        min_bm (int): The minimum number of bookmakers desired for sample size purposes.
-    """
-    count = sum(isinstance(v, (float, int)) and not pd.isna(v) for v in row.values)
-    return count >= min_bm
-
 def _safe_float(x):
     try:
         return float(x)
@@ -58,12 +46,7 @@ def _safe_float(x):
         return -np.inf
 
 def df_requirements(df: pd.DataFrame) -> pd.DataFrame:
-    vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
-    exclude_cols = set(vf_cols).union({"Best Odds"})
-    bm_cols = [
-        c for c in df.select_dtypes(include=["float", "int", "object"]).columns
-        if c not in exclude_cols
-    ]
+    bm_cols = df.columns[4:-1].tolist()
 
     def row_filter(row):
         num_valid = sum(
