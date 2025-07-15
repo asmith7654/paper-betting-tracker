@@ -2,7 +2,7 @@ name: Hourly Bet Finder
 
 on:
   schedule:
-    - cron: "6,21,36,51 * * * *"  # Runs every 15 minutes
+    - cron: "2,8,14,21,28,35,42,49,56 * * * *"
   workflow_dispatch:
 
 permissions:
