@@ -66,17 +66,14 @@ jobs:
         git config user.email "github-actions@github.com"
 
         for f in $CSV_LIST; do
-          [ -f "$f" ] && git add "$f" && echo " Staged $f"
+          [ -f "$f" ] && git add "$f" && echo "Staged $f"
         done
 
         git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
           || { echo "Nothing to commit – skipping push"; exit 0; }
 
-        # Re‑base onto the latest data branch tip so the push is fast‑forward
-        git fetch origin data
-        git rebase origin/data
-
-        # Push *this commit* to data (force-with-lease protects against races)
-        git push --force-with-lease \
+        # Push commit directly to data branch (no rebase)
+        git push \
           https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} \
           HEAD:data
+
