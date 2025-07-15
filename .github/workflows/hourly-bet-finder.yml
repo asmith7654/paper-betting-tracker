@@ -47,36 +47,40 @@ jobs:
     - name: Run bet‑finder script
       run: python find_bets.py
 
-    # ─────────────────────── 5. Commit & push CSVs to data branch ────────────────────
-    - name: Commit and push updated CSVs
-      shell: bash
-      env:
-        CSV_LIST: |
-          master_avg_bets.csv
-          master_avg_full.csv
-          master_pin_bets.csv
-          master_pin_full.csv
-          master_zscore_bets.csv
-          master_zscore_full.csv
-          master_mod_zscore_bets.csv
-          master_mod_zscore_full.csv
-      run: |
-        set -e
+# ─────────────────────── 5. Commit & push CSVs to data branch ────────────────────
+- name: Commit and push updated CSVs
+  shell: bash
+  env:
+    CSV_LIST: |
+      master_avg_bets.csv
+      master_avg_full.csv
+      master_pin_bets.csv
+      master_pin_full.csv
+      master_zscore_bets.csv
+      master_zscore_full.csv
+      master_mod_zscore_bets.csv
+      master_mod_zscore_full.csv
+  run: |
+    set -e
 
-        git config user.name  "github-actions[bot]"
-        git config user.email "github-actions@github.com"
+    git config user.name  "github-actions[bot]"
+    git config user.email "github-actions@github.com"
 
-        # Stage only CSVs that actually exist
-        for f in $CSV_LIST ; do
-          if [[ -f "$f" ]]; then
-            git add "$f"
-            echo " Staged $f"
-          fi
-        done
+    for f in $CSV_LIST ; do
+      if [[ -f "$f" ]]; then
+        git add "$f"
+        echo " Staged $f"
+      fi
+    done
 
-        git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" \
-          || { echo "Nothing to commit – skipping push"; exit 0; }
+    git commit -m "Update betting logs - $(date -u +"%Y-%m-%d %H:%M:%S")" || {
+      echo "Nothing to commit – skipping push";
+      exit 0;
+    }
 
-        # Push current HEAD (on master) to the remote **data** branch
-        # Creates the branch on first run if it isn’t there yet
-        git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:data
+    # Pull any latest changes on data branch to avoid non-fast-forward error
+    git fetch origin data
+    git rebase origin/data || echo "⚠️  Rebase failed – continuing anyway"
+
+    # Push the updated files to data branch
+    git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" HEAD:data
