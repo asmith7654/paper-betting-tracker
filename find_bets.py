@@ -520,11 +520,14 @@ if __name__ == "__main__":
         log_unique_bets(z_summary, "master_zscore_bets.csv")
         log_full_rows(z_df, pd.read_csv("master_zscore_bets.csv"), "master_zscore_full.csv")
 
-    # 3‑C Pinnacle edge ------------------------------------------------------
-    pin_df      = add_pinnacle_edge_info(vf_df, edge_threshold=0.05)
-    pin_summary = summarize_pinnacle_edge(pin_df)
-    #pin_summary.to_csv("pin_edge.csv", index=False)
+    # 3‑C  Pinnacle edge  ------------------------------------------------------
+    if "Pinnacle" in vf_df.columns and vf_df["Pinnacle"].notna().any():
+        pin_df      = add_pinnacle_edge_info(vf_df, edge_threshold=0.05)
+        pin_summary = summarize_pinnacle_edge(pin_df)
 
-    if not pin_summary.empty:
-        log_unique_bets(pin_summary, "master_pin_bets.csv")
-        log_full_rows(pin_df, pd.read_csv("master_pin_bets.csv"), "master_pin_full.csv")
+        if not pin_summary.empty:
+            log_unique_bets(pin_summary, "master_pin_bets.csv")
+            log_full_rows(pin_df, pin_summary, "master_pin_full.csv")
+    else:
+        print("⚠️  No Pinnacle odds found – skipping Pinnacle‑edge step")
+
