@@ -51,6 +51,38 @@ def min_bookmakers_mask(row: pd.Series, min_bm: int = 5) -> bool:
     count = sum(isinstance(v, (float, int)) and not pd.isna(v) for v in row.values)
     return count >= min_bm
 
+def _safe_float(x):
+    try:
+        return float(x)
+    except (ValueError, TypeError):
+        return -np.inf
+
+def df_requirements(df: pd.DataFrame) -> pd.DataFrame:
+    vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
+    exclude_cols = set(vf_cols).union({"Best Odds"})
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int", "object"]).columns
+        if c not in exclude_cols
+    ]
+
+    def row_filter(row):
+        num_valid = sum(
+            pd.notna(row[b]) and isinstance(_safe_float(row[b]), float)
+            for b in bm_cols
+        )
+        if num_valid < 5:
+            return False
+        if any(
+            pd.notna(row[b]) and _safe_float(row[b]) > 50
+            for b in bm_cols
+        ):
+            return False
+        return True
+
+    filtered_df = df[df.apply(row_filter, axis=1)].copy()
+    print(f"Filtered: {len(df)} → {len(filtered_df)} rows")
+    return filtered_df
+
 
 def _append_unique(df_to_append: pd.DataFrame,
                    csv_path: str,
@@ -233,7 +265,11 @@ def add_vig_free_implied_probs(df: pd.DataFrame,
         min_outcomes (int): The minimum number of outcomes of a match for the function to run.
     """
     df = df.copy()
-    bm_cols = df.select_dtypes(include=["float", "int"]).columns
+    _EXCLUDE_EXACT = {"Best Odds"}
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int"]).columns
+        if c not in _EXCLUDE_EXACT
+    ]
 
     for bm in bm_cols:
         vf_col = f"Vigfree {bm}"
@@ -272,8 +308,12 @@ def add_avg_edge_info(df: pd.DataFrame,
     """
     df = df.copy()
 
+    _EXCLUDE_EXACT = {"Best Odds"}
     vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
-    bm_cols = df.select_dtypes(include=["float", "int"]).columns
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int"]).columns
+        if c not in vf_cols and c not in _EXCLUDE_EXACT
+    ]
 
     best_book, best_edge, fair_odds_list = [], [], []
 
@@ -307,7 +347,7 @@ def add_avg_edge_info(df: pd.DataFrame,
         row_best_edge, row_best_book = -np.inf, None
         for bm in bm_cols:
             price = row[bm]
-            if pd.isna(price) or price <= 1:
+            if pd.isna(price):
                 continue
             edge = price / fair_odds - 1
             if edge > row_best_edge and edge >= edge_threshold:
@@ -334,11 +374,9 @@ def summarize_avg(df: pd.DataFrame) -> pd.DataFrame:
     """
     rows = []
     for _, r in df.iterrows():
-        if pd.isna(r["Best Avg Book"]) or pd.isna(r["Avg Edge Pct"]):
+        if pd.isna(r["Best Avg Book"]) or pd.isna(r["Avg Edge Pct"]) or pd.isna(r["Fair Odds Avg"]):
             continue
         price = r[r["Best Avg Book"]]
-        if pd.isna(price) or price <= 1 or price > 50:
-            continue
         rows.append({
             "Match": r["Match"],
             "Team": r["Team"],
@@ -362,16 +400,22 @@ def add_largest_outlier_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFr
         z_thresh (float): The lowest Z-score possible for a profitable bet.
     """
     df = df.copy()
-    bm_cols = df.select_dtypes(include=["float", "int"]).columns
+
+    _EXCLUDE_EXACT = {"Best Odds"}
+    vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int"]).columns
+        if c not in vf_cols and c not in _EXCLUDE_EXACT
+    ]
+
     names, scores = [], []
 
     for _, row in df.iterrows():
-        if not min_bookmakers_mask(row):
-            names.append(None); scores.append(None); continue
-
         odds = row[bm_cols].dropna().values
         median = np.median(odds)
         z = 0.6745 * np.maximum(0, odds - median) / (np.median(np.abs(odds - median)) or 1e-6)
+        #when z score is particularly high, so not consider
+        z[z > 6] = 0 
         idx = np.where(z > z_thresh)[0]
         if idx.size == 0:
             names.append(None); scores.append(None); continue
@@ -396,8 +440,6 @@ def summarize_outliers(df: pd.DataFrame) -> pd.DataFrame:
         if pd.isna(r["Largest Outlier Book"]) or pd.isna(r["Z Score"]):
             continue
         price = r[r["Largest Outlier Book"]]
-        if pd.isna(price) or price <= 1 or price > 50:
-            continue
         rows.append({
             "Match": r["Match"],
             "Team": r["Team"],
@@ -427,13 +469,16 @@ def add_pinnacle_edge_info(df: pd.DataFrame,
     if vf_pin not in df.columns:
         raise ValueError(f"{vf_pin} column missing – run vig‑free step first")
 
-    bm_cols = df.select_dtypes(include=["float", "int"]).columns
+    _EXCLUDE_EXACT = {"Best Odds"}
+    vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int"]).columns
+        if c not in vf_cols and c not in _EXCLUDE_EXACT
+    ]
+
     pin_fair, best_book, best_edge = [], [], []
 
     for _, row in df.iterrows():
-        if not min_bookmakers_mask(row):
-            pin_fair.append(None); best_book.append(None); best_edge.append(None); continue
-
         pin_prob = row[vf_pin]
         if pd.isna(pin_prob) or pin_prob <= 0:
             pin_fair.append(None); best_book.append(None); best_edge.append(None); continue
@@ -446,7 +491,7 @@ def add_pinnacle_edge_info(df: pd.DataFrame,
             if bm == pinnacle_col:
                 continue
             price = row[bm]
-            if pd.isna(price) or price <= 1:
+            if pd.isna(price):
                 continue
             edge = price / fair_odds - 1
             if edge > row_best_edge and edge >= edge_threshold:
@@ -476,7 +521,7 @@ def summarize_pinnacle_edge(df: pd.DataFrame) -> pd.DataFrame:
             continue
         best = sub.loc[sub["Pin Edge Pct"].idxmax()]
         price = best[best["Pinnacle Edge Book"]]
-        if pd.isna(price) or price > 50:
+        if pd.isna(price):
             continue
         rows.append({
             "Match": match,
@@ -495,11 +540,12 @@ def summarize_pinnacle_edge(df: pd.DataFrame) -> pd.DataFrame:
 #  MAIN PIPELINE                                                              #
 # --------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    # 1. Fetch & organise ----------------------------------------------------
+    # 1. Fetch, organize, and filter -----------------------------------------
     organized = prettify_headers(clean_odds(organize(fetch_odds())))
+    filtered = df_requirements(organized)
 
     # 2. Compute vig‑free
-    vf_df = add_vig_free_implied_probs(organized)
+    vf_df = add_vig_free_implied_probs(filtered)
     #vf_df.to_csv("vig.csv",index=False)
 
     # 3‑A Average edge -------------------------------------------------------
@@ -530,4 +576,3 @@ if __name__ == "__main__":
             log_full_rows(pin_df, pin_summary, "master_pin_full.csv")
     else:
         print("⚠️  No Pinnacle odds found – skipping Pinnacle‑edge step")
-
