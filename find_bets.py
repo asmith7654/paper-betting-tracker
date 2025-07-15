@@ -388,9 +388,71 @@ def summarize_avg(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# --------------------------------------- Z‑score outliers --------------------------------------- #
+def add_largest_zscore_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFrame:
+    """
+    Identifies odds that are greater than z_thresh modified Z-score. Creates columns
+    'Largest Outlier Book' and 'Z Score'.
+
+    Args:
+        df (pd.Dataframe): A dataframe whose float or int columns are odds.
+        z_thresh (float): The lowest Z-score possible for a profitable bet.
+    """
+    df = df.copy()
+
+    _EXCLUDE_EXACT = {"Best Odds"}
+    vf_cols = [c for c in df.columns if c.startswith("Vigfree ")]
+    bm_cols = [
+        c for c in df.select_dtypes(include=["float", "int"]).columns
+        if c not in vf_cols and c not in _EXCLUDE_EXACT
+    ]
+
+    names, scores = [], []
+
+    for _, row in df.iterrows():
+        odds = row[bm_cols].dropna().values
+        mean = np.mean(odds)
+        sd = np.std(odds,ddof=1)
+        z = np.maximum(0, odds - mean) / (sd or 1e-6)
+        #when z score is particularly high, do not consider
+        z[z > 6] = 0 
+        idx = np.where(z > z_thresh)[0]
+        if idx.size == 0:
+            names.append(None); scores.append(None); continue
+        best = idx[np.argmax(z[idx])]
+        names.append(bm_cols[best]); scores.append(round(z[best], 2))
+
+    df["Largest Outlier Book"] = names
+    df["Z Score"]              = scores
+    return df
+
+
+def summarize_zscores(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build tidy summary of outlier bets, one row per profitable bet.
+    Excludes rows where the best odds > 50.
+
+    Args:
+        df (pd.Dataframe): A dataframe that contains Z-score info.
+    """
+    rows = []
+    for _, r in df.iterrows():
+        if pd.isna(r["Largest Outlier Book"]) or pd.isna(r["Z Score"]):
+            continue
+        price = r[r["Largest Outlier Book"]]
+        rows.append({
+            "Match": r["Match"],
+            "Team": r["Team"],
+            "Start Time": r["Start Time"],
+            "Outlier Book": r["Largest Outlier Book"],
+            "Outlier Odds": price,
+            "Z Score": r["Z Score"],
+        })
+    return pd.DataFrame(rows)
+
 
 # ---------------------------------------  Modified Z‑score outliers --------------------------------------- #
-def add_largest_outlier_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFrame:
+def add_largest_mod_zscore_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFrame:
     """
     Identifies odds that are greater than z_thresh modified Z-score. Creates columns
     'Largest Outlier Book' and 'Z Score'.
@@ -414,7 +476,7 @@ def add_largest_outlier_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFr
         odds = row[bm_cols].dropna().values
         median = np.median(odds)
         z = 0.6745 * np.maximum(0, odds - median) / (np.median(np.abs(odds - median)) or 1e-6)
-        #when z score is particularly high, so not consider
+        #when z score is particularly high, do not consider
         z[z > 6] = 0 
         idx = np.where(z > z_thresh)[0]
         if idx.size == 0:
@@ -423,11 +485,11 @@ def add_largest_outlier_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFr
         names.append(bm_cols[best]); scores.append(round(z[best], 2))
 
     df["Largest Outlier Book"] = names
-    df["Z Score"]              = scores
+    df["Modified Z Score"]     = scores
     return df
 
 
-def summarize_outliers(df: pd.DataFrame) -> pd.DataFrame:
+def summarize_mod_zscores(df: pd.DataFrame) -> pd.DataFrame:
     """
     Build tidy summary of outlier bets, one row per profitable bet.
     Excludes rows where the best odds > 50.
@@ -437,7 +499,7 @@ def summarize_outliers(df: pd.DataFrame) -> pd.DataFrame:
     """
     rows = []
     for _, r in df.iterrows():
-        if pd.isna(r["Largest Outlier Book"]) or pd.isna(r["Z Score"]):
+        if pd.isna(r["Largest Outlier Book"]) or pd.isna(r["Modified Z Score"]):
             continue
         price = r[r["Largest Outlier Book"]]
         rows.append({
@@ -446,7 +508,7 @@ def summarize_outliers(df: pd.DataFrame) -> pd.DataFrame:
             "Start Time": r["Start Time"],
             "Outlier Book": r["Largest Outlier Book"],
             "Outlier Odds": price,
-            "Z Score": r["Z Score"],
+            "Modified Z Score": r["Modified Z Score"],
         })
     return pd.DataFrame(rows)
 
@@ -558,15 +620,24 @@ if __name__ == "__main__":
         log_full_rows(avg_df, pd.read_csv("master_avg_bets.csv"), "master_avg_full.csv")
 
     # 3‑B Z‑scores -----------------------------------------------------------
-    z_df        = add_largest_outlier_info(vf_df, z_thresh=2)
-    z_summary   = summarize_outliers(z_df)
-    #z_summary.to_csv("outliers.csv", index=False)
+    z_df        = add_largest_zscore_info(vf_df, z_thresh=2)
+    z_summary   = summarize_zscores(z_df)
+    #z_summary.to_csv("z.csv", index=False)
 
     if not z_summary.empty:
         log_unique_bets(z_summary, "master_zscore_bets.csv")
         log_full_rows(z_df, pd.read_csv("master_zscore_bets.csv"), "master_zscore_full.csv")
 
-    # 3‑C  Pinnacle edge  ------------------------------------------------------
+    # 3‑C Modified Z‑scores ---------------------------------------------------
+    mod_z_df        = add_largest_mod_zscore_info(vf_df, z_thresh=2)
+    mod_z_summary   = summarize_mod_zscores(mod_z_df)
+    #mod_z_summary.to_csv("mod_z.csv", index=False)
+
+    if not mod_z_summary.empty:
+        log_unique_bets(mod_z_summary, "master_mod_zscore_bets.csv")
+        log_full_rows(mod_z_df, pd.read_csv("master_mod_zscore_bets.csv"), "master_mod_zscore_full.csv")
+
+    # 3‑D  Pinnacle edge  ------------------------------------------------------
     if "Pinnacle" in vf_df.columns and vf_df["Pinnacle"].notna().any():
         pin_df      = add_pinnacle_edge_info(vf_df, edge_threshold=0.05)
         pin_summary = summarize_pinnacle_edge(pin_df)
