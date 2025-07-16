@@ -393,17 +393,24 @@ def add_largest_zscore_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.DataFra
     names, scores = [], []
 
     for _, row in df.iterrows():
-        odds = row[bm_cols].dropna().values
+        valid_cols = [col for col in bm_cols if pd.notna(row[col])]
+        odds = row[valid_cols].values
+
+        if len(odds) == 0:
+            names.append(None); scores.append(None); continue
+
         mean = np.mean(odds)
-        sd = np.std(odds,ddof=1)
+        sd = np.std(odds, ddof=1)
         z = np.maximum(0, odds - mean) / (sd or 1e-6)
-        #when z score is particularly high, do not consider
-        z[z > 6] = 0 
+        z[z > 6] = 0
+
         idx = np.where(z > z_thresh)[0]
         if idx.size == 0:
             names.append(None); scores.append(None); continue
+
         best = idx[np.argmax(z[idx])]
-        names.append(bm_cols[best]); scores.append(round(z[best], 2))
+        names.append(valid_cols[best])
+        scores.append(round(z[best], 2))
 
     df["Largest Outlier Book"] = names
     df["Z Score"]              = scores
@@ -456,16 +463,30 @@ def add_largest_mod_zscore_info(df: pd.DataFrame, z_thresh: float = 2) -> pd.Dat
     names, scores = [], []
 
     for _, row in df.iterrows():
-        odds = row[bm_cols].dropna().values
+        valid_cols = [col for col in bm_cols if pd.notna(row[col])]
+        odds = row[valid_cols].values
+
+        if len(odds) == 0:
+            names.append(None)
+            scores.append(None)
+            continue
+
         median = np.median(odds)
-        z = 0.6745 * np.maximum(0, odds - median) / (np.median(np.abs(odds - median)) or 1e-6)
-        #when z score is particularly high, do not consider
-        z[z > 6] = 0 
+        mad = np.median(np.abs(odds - median)) or 1e-6
+        z = 0.6745 * np.maximum(0, odds - median) / mad
+
+        z[z > 6] = 0
+
         idx = np.where(z > z_thresh)[0]
         if idx.size == 0:
-            names.append(None); scores.append(None); continue
+            names.append(None)
+            scores.append(None)
+            continue
+
         best = idx[np.argmax(z[idx])]
-        names.append(bm_cols[best]); scores.append(round(z[best], 2))
+        names.append(valid_cols[best])
+        scores.append(round(z[best], 2))
+
 
     df["Largest Outlier Book"] = names
     df["Modified Z Score"]     = scores
