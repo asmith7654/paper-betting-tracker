@@ -257,7 +257,7 @@ def log_unique_bets(summary_df: pd.DataFrame,
     conflict_key = ["Match", "Start Time"]
 
     # Infer score column name
-    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Edge Vs Pinnacle Pct"):
+    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Pin Edge Pct"):
         if candidate in summary_df.columns:
             score_col = candidate
             break
