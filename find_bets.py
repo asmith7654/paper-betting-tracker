@@ -684,7 +684,7 @@ def summarize_pin(df: pd.DataFrame) -> pd.DataFrame:
             "Start Time": r["Start Time"],
             "Pinnacle Edge Book": r["Best Bookmaker"],
             "Pinnacle Edge Odds": r["Best Odds"],
-            "Edge Vs Pinnacle Pct": r["Pin Edge Pct"],
+            "Pin Edge Pct": r["Pin Edge Pct"],
             "Pinnacle Fair Odds": r["Pinnacle Fair Odds"],
         })
     return pd.DataFrame(rows)
