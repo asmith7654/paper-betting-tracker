@@ -12,6 +12,7 @@ Date: July 2025
 
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 from fetch_odds import fetch_odds, organize
@@ -186,7 +187,7 @@ def _append_unique(df_to_append: pd.DataFrame,
         csv_path (str): Path leading to the master data set where bets will be appended.
     """
     df_to_append = df_to_append.copy()
-    df_to_append["Scrape Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    df_to_append["Scrape Time"] = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
 
     # If no CSV yet, write it
     if not os.path.exists(csv_path):
