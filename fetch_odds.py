@@ -2,7 +2,7 @@
 fetch_odds.py
 
 The file fetches sports betting odds using The Odds API. Pulls in odds from any designated sport,
-region, or market. Organizes a dataframe with odds to contain one row per outcome, with columns being
+region, or market. Organizes a DataFrame with odds to contain one row per outcome, with columns being
 bookmakers and essential information.
 
 Author: Andrew Smith
@@ -15,7 +15,9 @@ from datetime import datetime
 from dateutil import parser
 import pytz
 
-#sports keys
+
+# ---------------------------------------------- Constants ------------------------------------------------ #
+# Sports keys
 upcoming = "upcoming"
 kbo = "baseball_kbo"
 mlb = "baseball_mlb"
@@ -48,14 +50,17 @@ MARKETS = "h2h"
 ODDS_FORMAT = "decimal"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+
+# -------------------------- Odds fetcher (Rows are one set of odds for one outcome) ---------------------- #
 def fetch_odds() -> pd.DataFrame:
     """
-    Goes to The Odds API and pulls odds from the designated constants above. Returns a dataframe with odds
-    information.
+    Fetches head-to-head (h2h) betting odds from The Odds API.
 
     Returns:
-        pd.Dataframe: A dataframe from The Odds API containing odds information.
+        pd.DataFrame: A DataFrame containing bookmaker odds data for each outcome in each game.
+                      Each row represents one team's odds from one bookmaker.
     """
+    # Construct API URL and parameters
     url = f"https://api.the-odds-api.com/v4/sports/{SPORT}/odds"
     params = {
         "apiKey": API_KEY,
@@ -64,18 +69,23 @@ def fetch_odds() -> pd.DataFrame:
         "oddsFormat": ODDS_FORMAT
     }
 
+    # Send request to the API
     response = requests.get(url, params=params)
+
+    # Log API usage details for debugging/rate limiting
     print("Requests Remaining:", response.headers.get("x-requests-remaining"))
     print("Requests Used:", response.headers.get("x-requests-used"))
 
+    # Return empty DataFrame if request fails
     if response.status_code != 200:
-        print(f"⚠️ Failed to fetch odds: {response.status_code} - {response.text}")
+        print(f"Failed to fetch odds: {response.status_code} - {response.text}")
         return pd.DataFrame()
 
+    # Parse the JSON response
     data = response.json()
-    print(f"✅ Pulled {len(data)} games.\n")
+    print(f"Pulled {len(data)} games")
 
-    # 🧱 List of known betting exchanges to skip
+    # List of betting exchanges to exclude from results
     exchange_blocklist = {
         "Smarkets",
         "Betfair",
@@ -83,14 +93,16 @@ def fetch_odds() -> pd.DataFrame:
         "Betfair Sportsbook"
     }
 
-    rows = []
-    eastern = pytz.timezone("US/Eastern")
+    rows = []  # Will contain each row of the resulting DataFrame
+    eastern = pytz.timezone("US/Eastern")  # Used to localize times
 
     for game in data:
         try:
+            # Get home and away teams
             home = game["home_team"]
             away = game["away_team"]
 
+            # Convert game start time from UTC to Eastern time
             utc_dt = datetime.fromisoformat(game["commence_time"][:-1]).replace(tzinfo=pytz.utc)
             local_dt = utc_dt.astimezone(eastern)
             start_time = local_dt.strftime(DATE_FORMAT)
@@ -98,18 +110,23 @@ def fetch_odds() -> pd.DataFrame:
             for book in game.get("bookmakers", []):
                 book_name = book["title"]
 
-                # ⛔ Skip betting exchanges
+                # Skip betting exchanges
                 if any(exchange.lower() in book_name.lower() for exchange in exchange_blocklist):
                     continue
 
+                # Convert last update time to Eastern
                 last_update_utc = parser.isoparse(book["last_update"])
                 last_update_local = last_update_utc.astimezone(eastern)
                 last_update_str = last_update_local.strftime(DATE_FORMAT)
 
+                # Only process "h2h" markets for now
                 for market in book.get("markets", []):
                     if market["key"] != "h2h":
+                        print("Non-h2h market found, refactor code")
                         continue
+
                     for outcome in market.get("outcomes", []):
+                        # Append a row with all necessary data
                         rows.append({
                             "match": f"{away} @ {home}",
                             "start time": start_time,
@@ -118,63 +135,98 @@ def fetch_odds() -> pd.DataFrame:
                             "odds": outcome["price"],
                             "last update": last_update_str
                         })
+
         except Exception as e:
+            # Catch and report errors during game parsing
             print(f"Error parsing game: {e}")
             continue
 
+    # Convert collected rows into a pandas DataFrame
     df = pd.DataFrame(rows)
     return df
 
 
+# ------------------------- Organizer (Rows are outcomes with all available odds) ------------------------- #
 def organize(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Organizes dataframes from The Odds API such that each row is an outcome, and columns are bookmakers
+    Organizes dataframes from fetch_odds() such that each row is an outcome, and columns are bookmakers
     and essential info.
 
     Args:
-        df (pd.Dataframe): A dataframe containing odds from The Odds API.
+        df (pd.DataFrame): A dataframe containing odds from The Odds API.
     
     Returns:
-        pd.Dataframe: A dataframe where each row is an outcome, and columns are bookmakers
-    and essential info.
+        pd.DataFrame: A dataframe where each row is an outcome, and columns are bookmakers
+        and essential info.
     """
+    # Store all rows in a list, avoiding repeated DataFrame concatenation
+    rows = []
+
+    # Get all unique matches and bookmakers from the original dataframe
     unique_matches = df["match"].unique().tolist()
     bookmakers = df["bookmaker"].unique().tolist()
-    columns = ["match", "start time", "team", "last update"] + bookmakers + ["best odds"]
+
+    # Define the column structure for the organized dataframe
+    columns = ["match", "start time", "team", "last update"] + bookmakers + ["best odds", "best bookmaker"]
     new_df = pd.DataFrame(columns=columns)
 
+    # Iterate through each unique match
     for match in unique_matches:
+        # Filter rows that correspond to the current match
         matching_rows = df[df["match"] == match]
+
+        # Extract static info (assumed same across rows for a given match)
         start_time = matching_rows.iloc[0]["start time"]
         last_update = matching_rows.iloc[0]["last update"]
-        teams = matching_rows["team"].unique().tolist()  # now includes Draw if present
 
+        # Get the unique teams or outcomes (e.g., Team A win, draw, Team B win)
+        teams = matching_rows["team"].unique().tolist()
+
+        # Process each outcome (team) for the current match
         for team in teams:
+            # Get all rows for this team in this match
             team_rows = matching_rows[matching_rows["team"] == team]
+
+            # Initialize a dictionary to hold odds for each bookmaker
             odds_row = {bm: None for bm in bookmakers}
 
+            # Variables to track the best odds and the corresponding bookmaker
+            best = None
+            best_bm = None
+
+            # For each bookmaker, find and record their odds for this outcome
             for bm in bookmakers:
-                bm_rows = team_rows[team_rows["bookmaker"] == bm]
-                if not bm_rows.empty:
-                    odds_row[bm] = bm_rows.iloc[0]["odds"]
+                # Filter for this specific bookmaker's row
+                bm_row = team_rows[team_rows["bookmaker"] == bm]
 
-            odds_values = [v for v in odds_row.values() if v is not None]
-            best = max(odds_values) if odds_values else None
+                # If data exists, extract the odds
+                if not bm_row.empty:
+                    odds = bm_row.iloc[0]["odds"]
+                    odds_row[bm] = odds
 
+                    # Update best odds if this is the highest seen so far
+                    if best is None or odds > best:
+                        best = odds
+                        best_bm = bm
+
+            # Combine all data into a single row for the new DataFrame
             row = {
                 "match": match,
                 "start time": start_time,
                 "team": team,
                 "last update": last_update,
-                **odds_row,
-                "best odds": best
+                **odds_row,  # Unpack bookmaker odds into the row
+                "best odds": best,
+                "best bookmaker": best_bm
             }
+            rows.append(row)
 
-            new_df = pd.concat([new_df, pd.DataFrame([row])], ignore_index=True)
-
+    # Create a single DataFrame from the collected rows
+    new_df = pd.DataFrame(rows, columns=columns)
     return new_df
 
 
+# ------------------------------------------ Main Pipeline ------------------------------------------ #
 if __name__ == "__main__":
     df_odds = fetch_odds()
     organized_df = organize(df_odds)
