@@ -76,7 +76,7 @@ def _clean_odds(df: pd.DataFrame) -> pd.DataFrame:
     Replace any odds equal to 1.0 with NaN.
     
     Args:
-        df (pd.DataFrame): A DataFrame with bookmaker columns.
+        df (pd.DataFrame): A DataFrame with bookmaker columns. Need to edit bm_cols if DataFrame includes vig columns.
 
     Returns:
         pd.DataFrame: A DataFrame with all float or int values that are equal to 1 converted to NaN.
@@ -195,7 +195,7 @@ def _append_unique(df_to_append: pd.DataFrame,
         print(f"Created {csv_path} ({len(df_to_append)} rows)")
         return
 
-    # Load existing, align schemas
+    # Load existing, align schemas (for full .csv files, where new columns may arise)
     existing = pd.read_csv(csv_path)
 
     # Union of columns (keeps order: old cols first, then any new ones)
@@ -257,7 +257,7 @@ def log_unique_bets(summary_df: pd.DataFrame,
     conflict_key = ["Match", "Start Time"]
 
     # Infer score column name
-    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Edge Vs Pinnacle Pct"):
+    for candidate in ("Avg Edge Pct", "Z Score", "Modified Z Score", "Pin Edge Pct"):
         if candidate in summary_df.columns:
             score_col = candidate
             break
@@ -328,6 +328,7 @@ def add_vig_free_implied_probs(df: pd.DataFrame,
     bm_cols = _find_bookmakers(df)
 
     for bm in bm_cols:
+        # Create vigfree columns for each bookmaker
         vf_col = f"Vigfree {bm}"
         df[vf_col] = np.nan
 
@@ -340,6 +341,7 @@ def add_vig_free_implied_probs(df: pd.DataFrame,
             if len(odds) < needed:        
                 continue                
 
+            # Create fair probability and add to DataFrame
             probs = 1 / odds
             probs /= probs.sum()          
             df.loc[odds.index, vf_col] = probs.values
@@ -684,7 +686,7 @@ def summarize_pin(df: pd.DataFrame) -> pd.DataFrame:
             "Start Time": r["Start Time"],
             "Pinnacle Edge Book": r["Best Bookmaker"],
             "Pinnacle Edge Odds": r["Best Odds"],
-            "Edge Vs Pinnacle Pct": r["Pin Edge Pct"],
+            "Pin Edge Pct": r["Pin Edge Pct"],
             "Pinnacle Fair Odds": r["Pinnacle Fair Odds"],
         })
     return pd.DataFrame(rows)
