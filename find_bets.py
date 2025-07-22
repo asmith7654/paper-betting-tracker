@@ -206,15 +206,19 @@ def _append_unique(df_to_append: pd.DataFrame,
             all_cols.append(c)
 
     # Move specific columns to the end
-    cols_to_move = (_unique_cols(csv_path) or []) + ["Best Odds", "Best Bookmaker", "Scrape Time"] 
+    cols_to_move = (_unique_cols(csv_path) or []) + ["Best Odds", "Best Bookmaker", "Result", "Scrape Time"] 
     all_cols = [c for c in all_cols if c not in cols_to_move] + [c for c in cols_to_move if c in all_cols]
 
     # Add missing cols with NaN
     for c in all_cols:
-        if c not in existing.columns:
+        if c not in existing.columns and c != "Result":
             existing[c] = np.nan
-        if c not in df_to_append.columns:
+        elif c not in existing.columns and c == "Result":
+            existing[c] = "Not Found"
+        if c not in df_to_append.columns and c != "Result":
             df_to_append[c] = np.nan
+        elif c not in df_to_append.columns and c == "Result":
+            df_to_append[c] = "Not Found"
 
     # Re‑order both DataFrames
     existing = existing[all_cols]
