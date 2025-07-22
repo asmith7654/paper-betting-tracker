@@ -711,6 +711,7 @@ if __name__ == "__main__":
     df = fetch_odds()
     organized = organize(df)
     cleaned = clean(organized)
+    print(cleaned)
 
     # 2‑A Average-edge ------------------------------------------------------------------------
     #Compute vig‑free first
