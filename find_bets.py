@@ -711,7 +711,7 @@ if __name__ == "__main__":
     df = fetch_odds()
     organized = organize(df)
     print(organized)
-    print(organzied.columns)
+    print(organized.columns)
     cleaned = clean(organized)
     print(cleaned)
     print(cleaned.columns)
