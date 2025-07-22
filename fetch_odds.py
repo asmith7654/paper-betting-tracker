@@ -1,7 +1,7 @@
 """
 fetch_odds.py
 
-The file fetches sports betting odds using The Odds API. Pulls in odds from any designated sport,
+The file fetches sports betting odds using The-Odds-API. Pulls in odds from any designated sport,
 region, or market. Organizes a DataFrame with odds to contain one row per outcome, with columns being
 bookmakers and essential information.
 
