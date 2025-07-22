@@ -169,7 +169,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
     bookmakers = df["bookmaker"].unique().tolist()
 
     # Define the column structure for the organized dataframe
-    columns = ["match", "league", "start time", "team", "last update"] + bookmakers + ["best odds", "best bookmaker"]
+    columns = ["match", "league", "start time", "team", "last update", "result"] + bookmakers + ["best odds", "best bookmaker"]
     new_df = pd.DataFrame(columns=columns)
 
     # Iterate through each unique match
@@ -219,10 +219,10 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
                 "start time": start_time,
                 "team": team,
                 "last update": last_update,
+                "result": "Not Found",
                 **odds_row,  # Unpack bookmaker odds into the row
                 "best odds": best,
-                "best bookmaker": best_bm,
-                "result": "Not Found"
+                "best bookmaker": best_bm
             }
             rows.append(row)
 
