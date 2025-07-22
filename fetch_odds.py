@@ -221,7 +221,8 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
                 "last update": last_update,
                 **odds_row,  # Unpack bookmaker odds into the row
                 "best odds": best,
-                "best bookmaker": best_bm
+                "best bookmaker": best_bm,
+                "result": "Not Found"
             }
             rows.append(row)
 
