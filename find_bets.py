@@ -600,6 +600,7 @@ def summarize_avg(df: pd.DataFrame) -> pd.DataFrame:
             "Avg Edge Book": r["Best Bookmaker"],
             "Avg Edge Odds": r["Best Odds"],
             "Avg Edge Pct": r["Avg Edge Pct"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -632,6 +633,7 @@ def summarize_zscores(df: pd.DataFrame) -> pd.DataFrame:
             "Outlier Book": r["Best Bookmaker"],
             "Outlier Odds": r["Best Odds"],
             "Z Score": r["Z Score"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -664,6 +666,7 @@ def summarize_mod_zscores(df: pd.DataFrame) -> pd.DataFrame:
             "Outlier Book": r["Best Bookmaker"],
             "Outlier Odds": r["Best Odds"],
             "Modified Z Score": r["Modified Z Score"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -697,6 +700,7 @@ def summarize_pin(df: pd.DataFrame) -> pd.DataFrame:
             "Pinnacle Edge Odds": r["Best Odds"],
             "Pin Edge Pct": r["Pin Edge Pct"],
             "Pinnacle Fair Odds": r["Pinnacle Fair Odds"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
