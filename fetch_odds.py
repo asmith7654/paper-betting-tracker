@@ -8,15 +8,13 @@ bookmakers and essential information.
 Author: Andrew Smith
 Date: July 2025
 """
-
+# ---------------------------------------- Imports and Variables ------------------------------------------ #
 import requests
 import pandas as pd
 from datetime import datetime
 from dateutil import parser
 import pytz
 
-
-# ---------------------------------------------- Variables ------------------------------------------------ #
 # Sports keys
 upcoming = "upcoming"
 kbo = "baseball_kbo"
