@@ -301,7 +301,7 @@ def log_full_rows(source_df: pd.DataFrame,
     else:
         raise ValueError("No score column found in summary DataFrame.")
 
-    # Sort to match individual bets
+    # Sort to match "log_unique_bets"
     sorted = (output.sort_values(score_col, ascending=False))
 
     _append_unique(sorted, csv_path)
@@ -589,6 +589,7 @@ def summarize_avg(df: pd.DataFrame) -> pd.DataFrame:
 
         rows.append({
             "Match": r["Match"],
+            "League": r["League"],
             "Team": r["Team"],
             "Start Time": r["Start Time"],
             "Avg Edge Book": r["Best Bookmaker"],
@@ -620,6 +621,7 @@ def summarize_zscores(df: pd.DataFrame) -> pd.DataFrame:
 
         rows.append({
             "Match": r["Match"],
+            "League": r["League"],
             "Team": r["Team"],
             "Start Time": r["Start Time"],
             "Outlier Book": r["Best Bookmaker"],
@@ -651,6 +653,7 @@ def summarize_mod_zscores(df: pd.DataFrame) -> pd.DataFrame:
 
         rows.append({
             "Match": r["Match"],
+            "League": r["League"],
             "Team": r["Team"],
             "Start Time": r["Start Time"],
             "Outlier Book": r["Best Bookmaker"],
@@ -682,6 +685,7 @@ def summarize_pin(df: pd.DataFrame) -> pd.DataFrame:
 
         rows.append({
             "Match": r["Match"],
+            "League": r["League"],
             "Team": r["Team"],
             "Start Time": r["Start Time"],
             "Pinnacle Edge Book": r["Best Bookmaker"],

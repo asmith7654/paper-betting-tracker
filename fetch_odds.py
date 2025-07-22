@@ -102,6 +102,9 @@ def fetch_odds() -> pd.DataFrame:
             home = game["home_team"]
             away = game["away_team"]
 
+            # Get league for results fetching
+            league = game["sport_title"]
+
             # Convert game start time from UTC to Eastern time
             utc_dt = datetime.fromisoformat(game["commence_time"][:-1]).replace(tzinfo=pytz.utc)
             local_dt = utc_dt.astimezone(eastern)
@@ -129,6 +132,7 @@ def fetch_odds() -> pd.DataFrame:
                         # Append a row with all necessary data
                         rows.append({
                             "match": f"{away} @ {home}",
+                            "league": league,
                             "start time": start_time,
                             "team": outcome["name"],
                             "bookmaker": book_name,
@@ -167,7 +171,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
     bookmakers = df["bookmaker"].unique().tolist()
 
     # Define the column structure for the organized dataframe
-    columns = ["match", "start time", "team", "last update"] + bookmakers + ["best odds", "best bookmaker"]
+    columns = ["match", "league", "start time", "team", "last update"] + bookmakers + ["best odds", "best bookmaker"]
     new_df = pd.DataFrame(columns=columns)
 
     # Iterate through each unique match
@@ -176,6 +180,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
         matching_rows = df[df["match"] == match]
 
         # Extract static info (assumed same across rows for a given match)
+        league = matching_rows.iloc[0]["league"]
         start_time = matching_rows.iloc[0]["start time"]
         last_update = matching_rows.iloc[0]["last update"]
 
@@ -212,6 +217,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
             # Combine all data into a single row for the new DataFrame
             row = {
                 "match": match,
+                "league": league,
                 "start time": start_time,
                 "team": team,
                 "last update": last_update,
@@ -230,5 +236,4 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
 if __name__ == "__main__":
     df_odds = fetch_odds()
     organized_df = organize(df_odds)
-    print(organized_df.head())
     organized_df.to_csv("odds.csv", index=False)
