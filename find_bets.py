@@ -9,13 +9,14 @@ Pinnacle sportsbook (a known "sharp" sportsbook). Profitable bets are then saved
 Author: Andrew Smith
 Date: July 2025
 """
-# ---------------------------------------- Imports and Variables ---------------------------------------- #
+# ---------------------------------------------- Imports ------------------------------------------------ #
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 from fetch_odds import fetch_odds, organize
+
 
 # ------------------------------------- Start time to date helper --------------------------------------- #
 def _start_date(ts) -> str:
