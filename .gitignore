@@ -1,13 +1,15 @@
-append_results.py
+theodds_results.py
 
 csv_editer.py
 
 *.ipynb
 
-temp.py
+sportsdb_results.py
 
-temp2.py
+add_league_col.py
 
 __pycache__
 
 old_data
+
+results.csv
