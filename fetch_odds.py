@@ -1,22 +1,20 @@
 """
 fetch_odds.py
 
-The file fetches sports betting odds using The Odds API. Pulls in odds from any designated sport,
+The file fetches sports betting odds using The-Odds-API. Pulls in odds from any designated sport,
 region, or market. Organizes a DataFrame with odds to contain one row per outcome, with columns being
 bookmakers and essential information.
 
 Author: Andrew Smith
 Date: July 2025
 """
-
+# ---------------------------------------- Imports and Variables ------------------------------------------ #
 import requests
 import pandas as pd
 from datetime import datetime
 from dateutil import parser
 import pytz
 
-
-# ---------------------------------------------- Constants ------------------------------------------------ #
 # Sports keys
 upcoming = "upcoming"
 kbo = "baseball_kbo"
@@ -171,7 +169,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
     bookmakers = df["bookmaker"].unique().tolist()
 
     # Define the column structure for the organized dataframe
-    columns = ["match", "league", "start time", "team", "last update"] + bookmakers + ["best odds", "best bookmaker"]
+    columns = ["match", "league", "start time", "team", "last update", "result"] + bookmakers + ["best odds", "best bookmaker"]
     new_df = pd.DataFrame(columns=columns)
 
     # Iterate through each unique match
@@ -221,6 +219,7 @@ def organize(df: pd.DataFrame) -> pd.DataFrame:
                 "start time": start_time,
                 "team": team,
                 "last update": last_update,
+                "result": "Not Found",
                 **odds_row,  # Unpack bookmaker odds into the row
                 "best odds": best,
                 "best bookmaker": best_bm

@@ -9,13 +9,14 @@ Pinnacle sportsbook (a known "sharp" sportsbook). Profitable bets are then saved
 Author: Andrew Smith
 Date: July 2025
 """
-
+# ---------------------------------------------- Imports ------------------------------------------------ #
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 from fetch_odds import fetch_odds, organize
+
 
 # ------------------------------------- Start time to date helper --------------------------------------- #
 def _start_date(ts) -> str:
@@ -205,15 +206,19 @@ def _append_unique(df_to_append: pd.DataFrame,
             all_cols.append(c)
 
     # Move specific columns to the end
-    cols_to_move = (_unique_cols(csv_path) or []) + ["Best Odds", "Best Bookmaker", "Scrape Time"] 
+    cols_to_move = (_unique_cols(csv_path) or []) + ["Best Odds", "Best Bookmaker", "Result", "Scrape Time"] 
     all_cols = [c for c in all_cols if c not in cols_to_move] + [c for c in cols_to_move if c in all_cols]
 
     # Add missing cols with NaN
     for c in all_cols:
-        if c not in existing.columns:
+        if c not in existing.columns and c != "Result":
             existing[c] = np.nan
-        if c not in df_to_append.columns:
+        elif c not in existing.columns and c == "Result":
+            existing[c] = "Not Found"
+        if c not in df_to_append.columns and c != "Result":
             df_to_append[c] = np.nan
+        elif c not in df_to_append.columns and c == "Result":
+            df_to_append[c] = "Not Found"
 
     # Re‑order both DataFrames
     existing = existing[all_cols]
@@ -595,6 +600,7 @@ def summarize_avg(df: pd.DataFrame) -> pd.DataFrame:
             "Avg Edge Book": r["Best Bookmaker"],
             "Avg Edge Odds": r["Best Odds"],
             "Avg Edge Pct": r["Avg Edge Pct"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -627,6 +633,7 @@ def summarize_zscores(df: pd.DataFrame) -> pd.DataFrame:
             "Outlier Book": r["Best Bookmaker"],
             "Outlier Odds": r["Best Odds"],
             "Z Score": r["Z Score"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -659,6 +666,7 @@ def summarize_mod_zscores(df: pd.DataFrame) -> pd.DataFrame:
             "Outlier Book": r["Best Bookmaker"],
             "Outlier Odds": r["Best Odds"],
             "Modified Z Score": r["Modified Z Score"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
@@ -692,6 +700,7 @@ def summarize_pin(df: pd.DataFrame) -> pd.DataFrame:
             "Pinnacle Edge Odds": r["Best Odds"],
             "Pin Edge Pct": r["Pin Edge Pct"],
             "Pinnacle Fair Odds": r["Pinnacle Fair Odds"],
+            "Result": r["Result"],
         })
     return pd.DataFrame(rows)
 
