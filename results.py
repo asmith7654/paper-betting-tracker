@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     # Loop through files
     for file in files:
-        print(f"Starting {file}.")
+        print(f"\nStarting {file}.\n")
 
         # Load in file -------------------------------------------------------------------------------------
         df = pd.read_csv(file)
