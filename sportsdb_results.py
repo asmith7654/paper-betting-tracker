@@ -11,6 +11,8 @@ Date: July 2025
 import requests
 import pandas as pd
 import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 THESPORTSDB_API_KEY = "123"
 
@@ -47,6 +49,34 @@ def _format_match_for_thesportsdb(match: str) -> str:
     else:
         return match.replace(" ", "_")
     return formatted.replace(" ", "_")
+
+
+# -------------------------------------- Time Since Start Filter --------------------------------------------
+def _time_since_start(df: pd.DataFrame, thresh: float) -> pd.DataFrame:
+    """
+    Filter out games that started less than "thresh" hours ago.
+
+    Args:
+        df (pd.DataFrame): A results DataFrame.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing only games that started over "thresh" hours ago.
+    """
+    # Get the current time
+    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
+    current_time_obj = datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
+
+    # Convert "Start Time" column to datetime objects
+    df['Start Time'] = pd.to_datetime(df['Start Time'], format="%Y-%m-%d %H:%M:%S")
+
+    # Create conditions for removal
+    cutoff = current_time_obj - timedelta(days=thresh)
+
+    # Filter out games that started less than 12 hours ago (for API bug)
+    mask = (df["Start Time"] <= cutoff)
+    df = df[mask]
+
+    return df
 
 
 # ------------------------------------------- Results Fetcher -----------------------------------------------
@@ -107,6 +137,9 @@ def _get_results(match: str, date: str) -> str:
 def get_finished_games_from_thesportsdb(df: pd.DataFrame) -> pd.DataFrame:
     if "Result" not in df.columns:
         df["Result"] = "Not Found"
+
+    # Filter out games that started less than 12 hours ago
+    df = _time_since_start(df,0.5)
 
     fetches = 0
 

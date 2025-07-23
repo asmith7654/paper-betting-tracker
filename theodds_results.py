@@ -10,6 +10,8 @@ Date: July 2025
 # ---------------------------------------- Imports and Variables --------------------------------------------
 import requests
 import pandas as pd
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 sports= [
     "americanfootball_cfl",
@@ -180,6 +182,34 @@ def _parse_match_teams(match: str) -> list[str]:
     return teams
 
 
+# -------------------------------------- Time Since Start Filter --------------------------------------------
+def _time_since_start(df: pd.DataFrame, thresh: float) -> pd.DataFrame:
+    """
+    Filter out games that started less than "thresh" hours ago.
+
+    Args:
+        df (pd.DataFrame): A results DataFrame.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing only games that started over "thresh" hours ago.
+    """
+    # Get the current time
+    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
+    current_time_obj = datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
+
+    # Convert "Start Time" column to datetime objects
+    df['Start Time'] = pd.to_datetime(df['Start Time'], format="%Y-%m-%d %H:%M:%S")
+
+    # Create conditions for removal
+    cutoff = current_time_obj - timedelta(days=thresh)
+
+    # Filter out games that started less than 12 hours ago (for API bug)
+    mask = (df["Start Time"] <= cutoff)
+    df = df[mask]
+
+    return df
+
+
 # ------------------------------------------- Results Fetcher -----------------------------------------------
 def _get_scores_from_api(sports_key: str, days_from: int = 3) -> list[dict]:
     """
@@ -274,6 +304,9 @@ def get_finished_games(df: pd.DataFrame, sports_key: str) -> pd.DataFrame:
     """
     # Get a list of the games from the past 3 days in the specified sport
     scores = _get_scores_from_api(sports_key)
+
+    # Filter out games that started less than 12 hours ago
+    df = _time_since_start(df,0.5)
 
     # Ensure "Result" column exists
     if "Result" not in df.columns:
