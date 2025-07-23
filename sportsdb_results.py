@@ -122,7 +122,7 @@ def get_finished_games_from_thesportsdb(df: pd.DataFrame) -> pd.DataFrame:
 
         if fetches % 30 == 0:
             # Every 30 requests, wait 60 seconds
-            print("Pausing for 60 seconds to respect API rate limits...")
+            print("Pausing for 60 seconds to respect SportsDB API rate limits...")
             time.sleep(60)
 
     return df

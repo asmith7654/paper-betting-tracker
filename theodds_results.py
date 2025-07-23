@@ -283,7 +283,7 @@ def get_finished_games(df: pd.DataFrame, sports_key: str) -> pd.DataFrame:
         existing_result = row.get("Result")
 
         # Skip rows that already have a result other than "Not Found"
-        if existing_result != "Not Found":
+        if existing_result not in ["Not Found", "Pending"]:
             continue
 
         # Note the necessary args for the filter() function
