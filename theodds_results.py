@@ -302,32 +302,28 @@ def get_finished_games(df: pd.DataFrame, sports_key: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The same DataFrame as df, but with a Results column.
     """
+    if "Result" not in df.columns:
+        df["Result"] = "Not Found"
+
     # Get a list of the games from the past 3 days in the specified sport
     scores = _get_scores_from_api(sports_key)
 
     # Filter out games that started less than 12 hours ago
-    df = _time_since_start(df,0.5)
+    indices = _time_since_start(df,0.5).index.tolist()
 
-    # Ensure "Result" column exists
-    if "Result" not in df.columns:
-        df["Result"] = "Not Found"
-
-    for idx, row in df.iterrows():
+    for i in indices:
+        row = df.iloc[i]
         existing_result = row.get("Result")
 
         # Skip rows that already have a result other than "Not Found"
-        if existing_result not in ["Not Found", "Pending"]:
+        if existing_result not in ["Not Found", "Pending", "API Error"]:
             continue
 
         # Note the necessary args for the filter() function
         start_date = _start_date(row["Start Time"])
-
         teams = _parse_match_teams(row["Match"])
-        if len(teams) != 2:
-            df.at[idx, "Result"] = "Invalid Match"
-            continue
-
         away_team, home_team = teams[0], teams[1]
+
         matches = _filter(scores, start_date, home_team, away_team)
 
         # With the scores list filtered to match the game at this row, find the result
@@ -336,7 +332,7 @@ def get_finished_games(df: pd.DataFrame, sports_key: str) -> pd.DataFrame:
         else:
             result = "Not Found"
 
-        df.at[idx, "Result"] = result
+        df.at[i, "Result"] = result
 
     return df
 

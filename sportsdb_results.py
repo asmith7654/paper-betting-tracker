@@ -138,21 +138,25 @@ def get_finished_games_from_thesportsdb(df: pd.DataFrame) -> pd.DataFrame:
     if "Result" not in df.columns:
         df["Result"] = "Not Found"
 
-    # Filter out games that started less than 12 hours ago
+    # Only loop through games that started less than 12 hours ago
     indices = _time_since_start(df,0.5).index.tolist()
-    print(indices)
 
+    # Track API requests to respect rate limits
     fetches = 0
 
-    for idx, row in df.iterrows():
-        if row["Result"] != "Not Found":
+    for i in indices:
+        row = df.iloc[i]
+        existing_result = row.get("Result")
+
+        # Skip rows that already have a result other than "Not Found"
+        if existing_result not in ["Not Found", "Pending", "API Error"]:
             continue
 
         match = _format_match_for_thesportsdb(row["Match"])
         date = _start_date(row["Start Time"])
         result = _get_results(match, date)
         fetches += 1
-        df.at[idx, "Result"] = result
+        df.at[i, "Result"] = result
 
         if fetches % 30 == 0:
             # Every 30 requests, wait 60 seconds
