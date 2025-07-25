@@ -139,7 +139,8 @@ def get_finished_games_from_thesportsdb(df: pd.DataFrame) -> pd.DataFrame:
         df["Result"] = "Not Found"
 
     # Filter out games that started less than 12 hours ago
-    df = _time_since_start(df,0.5)
+    indices = _time_since_start(df,0.5).index.tolist()
+    print(indices)
 
     fetches = 0
 

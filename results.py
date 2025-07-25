@@ -118,7 +118,7 @@ if __name__ == "__main__":
         # Pull remaining results from SportsDB -------------------------------------------------------------
         df = get_finished_games_from_thesportsdb(df)
 
-        # Remove rows older than 4 days old ----------------------------------------------------------------
+        # Remove rows older than 3 days old ----------------------------------------------------------------
         # Get the current time
         current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M:%S")
         current_time_obj = datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S")
