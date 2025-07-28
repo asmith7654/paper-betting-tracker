@@ -9,6 +9,7 @@ Date: July 2025
 """
 # ---------------------------------------- Imports and Variables --------------------------------------------
 import pandas as pd
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from theodds_results import get_finished_games, map_league_to_key
@@ -125,13 +126,14 @@ if __name__ == "__main__":
         # Pull remaining results from SportsDB -------------------------------------------------------------
         df = get_finished_games_from_thesportsdb(df)
 
-        df["Result"] = full_df["Result"]
+        full_df["Result"] = df["Result"]
 
         # Remove rows older than 3 days old that do not have a valid result --------------------------------
         # Get the current time
         current_time = datetime.now(ZoneInfo("America/New_York"))
 
-        # Convert "Start Time" column to datetime objects
+        # Convert "Start Time" column to datetime objects, store original "Start Time" column
+        temp_start_time = df["Start Time"].copy()
         df['Start Time'] = pd.to_datetime(df['Start Time'], format="%Y-%m-%d %H:%M:%S")
         df["Start Time"] = df["Start Time"].dt.tz_localize("America/New_York")
 
@@ -144,6 +146,13 @@ if __name__ == "__main__":
         df = df[mask]
         full_df = full_df[mask]
 
+        # Replace "Start Time" column with the original state
+        df["Start Time"] = temp_start_time
+
         # Write to .csv
         df.to_csv(bet_file,index=False)
         full_df.to_csv(full_file,index=False)
+
+        time.sleep(60)
+
+# International Twenty20, boxing, mma,

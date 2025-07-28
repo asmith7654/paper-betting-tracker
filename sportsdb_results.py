@@ -15,12 +15,15 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 THESPORTSDB_API_KEY = "123"
+# https://www.thesportsdb.com/api/v1/json/123/searchevents.php?e={match}&d={date}
+# https://www.thesportsdb.com/api/v1/json/123/searchevents.php?e=Atlanta_Braves_vs_Texas_Rangers
 
 
 # ----------------------------------------- Formatting Helpers ----------------------------------------------
 def _start_date(ts) -> str:
     """
-    Convert a timestamp / datetime-like / ISO string to "YYYY-MM-DD".
+    Convert a timestamp / datetime-like / ISO string to "YYYY-MM-DD",
+    adjusted 4 hours forward (e.g., from UTC to EDT).
 
     Args:
         ts (Any): Timestamp to convert to date.
@@ -28,7 +31,9 @@ def _start_date(ts) -> str:
     Returns:
         str: Date string.
     """
-    return pd.to_datetime(ts).strftime("%Y-%m-%d")
+    dt = pd.to_datetime(ts) + pd.Timedelta(hours=4)
+    return dt.strftime("%Y-%m-%d")
+
 
 
 def _format_match_for_thesportsdb(match: str) -> str:

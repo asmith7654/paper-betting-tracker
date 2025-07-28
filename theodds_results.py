@@ -147,12 +147,15 @@ sports_with_results = [
 ]
 
 API_KEY = "7ca177e18aa6a5230dddc27a238e3f73"
+# https://api.the-odds-api.com/v4/sports/{sports_key}/scores/?daysFrom=3&apiKey=7ca177e18aa6a5230dddc27a238e3f73
+# https://api.the-odds-api.com/v4/sports/baseball_mlb/scores/?daysFrom=3&apiKey=7ca177e18aa6a5230dddc27a238e3f73
 
 
 # ------------------------------------------ Formatting Helpers ---------------------------------------------
 def _start_date(ts) -> str:
     """
-    Convert a timestamp / datetime-like / ISO string to "YYYY-MM-DD".
+    Convert a timestamp / datetime-like / ISO string to "YYYY-MM-DD",
+    adjusted 4 hours forward (e.g., from UTC to EDT).
 
     Args:
         ts (Any): Timestamp to convert to date.
@@ -160,7 +163,9 @@ def _start_date(ts) -> str:
     Returns:
         str: Date string.
     """
-    return pd.to_datetime(ts).strftime("%Y-%m-%d")
+    dt = pd.to_datetime(ts) + pd.Timedelta(hours=4)
+    return dt.strftime("%Y-%m-%d")
+
 
 
 def _parse_match_teams(match: str) -> list[str]:
