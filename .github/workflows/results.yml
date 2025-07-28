@@ -2,7 +2,7 @@ name: Fill Results
 
 on:
   schedule:
-    - cron: "4,22,46 * * * *"  # 3 times an hour
+    - cron: "22 * * * *"  # Run hourly at the 22 minute mark
   workflow_dispatch:
 
 permissions:
