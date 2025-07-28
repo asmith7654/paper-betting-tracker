@@ -1,0 +1,70 @@
+name: Fill Results
+
+on:
+  schedule:
+    - cron: "4,22,46 * * * *"  # 3 times an hour
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-results-updater:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout results branch
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: results
+
+    - name: Fetch latest CSVs from data branch
+      run: |
+        git fetch origin data:data
+        git checkout data -- '*.csv'
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: |
+        pip install pandas requests
+
+    - name: Run results.py
+      run: |
+        python results.py
+
+    - name: Commit and push updated CSVs to data branch
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions@github.com"
+
+        CSV_LIST="
+          master_avg_bets.csv
+          master_avg_full.csv
+          master_mod_zscore_bets.csv
+          master_mod_zscore_full.csv
+          master_pin_bets.csv
+          master_pin_full.csv
+          master_zscore_bets.csv
+          master_zscore_full.csv
+        "
+
+        git add $CSV_LIST
+        git commit -m "Update results - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "Nothing to commit"
+
+        git fetch origin data:data
+        git checkout data
+
+        git rm -f --ignore-unmatch $CSV_LIST
+        git commit -m "Remove outdated CSVs" || true
+
+        git checkout results -- $CSV_LIST
+
+        git add $CSV_LIST
+        git commit -m "Add updated result CSVs - $(date -u +"%Y-%m-%d %H:%M:%S")" || echo "No changes to commit"
+
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/asmith7654/paper-betting-tracker.git HEAD:data
